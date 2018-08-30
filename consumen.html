@@ -1,0 +1,117 @@
+<html>
+<head>
+   <style>
+   .vote-result-wrapper{
+      width: 700px;
+      height: 700px;
+   }
+   </style>
+</head>
+
+<body>
+    <div>
+        <label for="consumenId"> login sebagai Consumen : </label>
+        <select name="consumenId" id="consumenId">
+            <option value="1">Arie</option>
+            <option value="2">Indro</option>
+            <option value="3">Wondo</option>
+            <option value="4">Abba</option>
+        </select>
+    </div>
+    <div>
+        <label for="depotId">Isi ulang galon ke depot</label>
+        <select name="depotId" id="depotId">
+            <option value="1">Bilkis</option>
+            <option value="2">Guntur</option>
+            <option value="3">Maya</option>
+            <option value="4">Alif</option>
+        </select>
+    </div>
+    <div>
+        <label for="qty">jumlah galon</label>
+        <input type="number" name="qty" id="qty" min=1 max=99 value="1">
+        <button type="button" name="pesan">Pesan</button>
+    </div>
+    <div>
+        <span>catatan consumen </span>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Depot Galon</th>
+                    <th>Jumlah Pesan</th>
+                </tr>
+            </thead>
+            <tbody data-name="consumenHistory">
+            </tbody>
+            <tr></tr>
+        </table>
+    </div>
+</body>
+
+<script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.8/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.2.2/Chart.min.js"></script>
+
+<script>
+// Setting socket 
+const DEPOTSNAME = ['Bilkis', 'Guntur', 'Maya','Alif'];
+
+$( document ).ready(function() {
+    const socketConsumen = io('/consumen');
+    let consumenId = Number( $('[name="consumenId"]').val() )
+
+    socketConsumen.on('showHistory', data => {
+        createCleanTableContent(data)
+    })
+
+    socketConsumen.on('orderGallonSuccess', data => {
+        addContent(data)
+    })
+
+    socketConsumen.on('joinedRoom', () => {
+        socketConsumen.emit('getHistory');
+    })
+
+    socketConsumen.on('leavedRoom', () => {
+        consumenId = Number($('[name="consumenId"]').val())
+        socketConsumen.emit('join', consumenId)        
+    })
+
+    $('[name="consumenId"]').change( () => {
+        socketConsumen.emit('leave')
+    })
+
+
+    
+    $('[name="pesan"]').click( (event) => {
+        const depotId = Number($('[name="depotId"]').val())
+        const qty = Number($('[name="qty"]').val())
+        socketConsumen.emit('orderGallon', { depotId, qty } );
+    })
+
+    createCleanTableContent = (data) => {
+        const domBody = $('[data-name="consumenHistory"]')
+        domBody.empty()
+
+        data.forEach(item => {
+            addContent(item)
+        })
+    }
+
+    addContent = data => {
+        const domBody = $('[data-name="consumenHistory"]')
+        const domItem = $(`<tr>
+                    <td>${findNameDepot(data.depotId)}</td>
+                    <td>${data.qty} Galon</td>
+                </tr>`)
+            domBody.append(domItem)
+    }
+
+    findNameDepot = (id) => {
+        return DEPOTSNAME[(id - 1)]
+    }
+
+    socketConsumen.emit('join', consumenId)
+})
+</script>
+</html>

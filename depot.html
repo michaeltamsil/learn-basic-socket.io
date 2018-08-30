@@ -1,0 +1,134 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.13.2/tingle.min.css">
+    </head>
+<body>
+    <div>
+        <label for="depotId">login sebagai depot :</label>
+        <select name="depotId" id="depotId">
+            <option value="1">Bilkis</option>
+            <option value="2">Guntur</option>
+            <option value="3">Maya</option>
+            <option value="4">Alif</option>
+        </select>
+    </div>
+    <div>
+        <span>catatan pesanan </span>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Konsumen</th>
+                    <th>Jumlah Pesan</th>
+                </tr>
+            </thead>
+            <tbody data-name="depotHistory">
+            </tbody>
+            <tr></tr>
+        </table>
+    </div>
+</body>
+
+<script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.8/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.13.2/tingle.min.js"></script>
+
+<script>
+// Setting socket 
+const CONSUMENSNAME = ['Arie', 'Indro', 'Wondo','Abba'];
+window.modalIsOpen = false;
+
+$( document ).ready(function() {
+    const socketDepot = io('/depot');
+    let depotId = Number( $('[name="depotId"]').val() )
+    
+    socketDepot.on('showHistory', data => {
+        console.log(data)
+        createCleanTableContent(data)
+    })
+
+    socketDepot.on('newOrderGallon', data => {
+        if (!window.modal.modalIsOpen){
+            newDom = $(`<div><div><b>Consumen Order Baru : </b></div><content></content><div>`)
+            $('content',newDom).append(`<div>pelanggan ${findNameConsumen(data.consumenId)}: ${data.qty} Galon</div>`)
+            window.modal.setContent($(newDom)[0]);
+            window.modal.open();
+        }else{
+            dom = window.modal.getContent();
+            $('content', dom).append(`<div>pelanggan ${findNameConsumen(data.consumenId)}: ${data.qty} Galon</div>`)
+        }
+        
+        addContent(data)
+    })
+
+    socketDepot.on('joinedRoom', () => {
+        socketDepot.emit('getHistory');
+    })
+    
+    socketDepot.on('leavedRoom', () => {
+        depotId = Number($('[name="depotId"]').val())
+        socketDepot.emit('join', depotId)        
+    })
+
+    $('[name="depotId"]').change( () => {
+        socketDepot.emit('leave')
+    })
+
+
+    createCleanTableContent = (data) => {
+        const domBody = $('[data-name="depotHistory"]')
+        domBody.empty()
+
+        data.forEach(item => {
+            addContent(item)
+        })
+    }
+
+    addContent = data => {
+        const domBody = $('[data-name="depotHistory"]')
+        const domItem = $(`<tr>
+                    <td>${findNameConsumen(data.consumenId)}</td>
+                    <td>${data.qty} Galon</td>
+                </tr>`)
+            domBody.append(domItem)
+    }
+
+    findNameConsumen = (id) => {
+        return CONSUMENSNAME[(id - 1)]
+    }
+
+
+    var modal = new tingle.modal({
+        footer: true,
+        stickyFooter: true,
+       // closeMethods: ['overlay', 'button', 'escape'],
+        closeLabel: "Close",
+        //cssClass: ['custom-class-1', 'custom-class-2'],
+        onOpen: function() {
+            console.log('modal open');
+        },
+        onClose: function() {
+            console.log('modal closed');
+        },
+        beforeOpen: function(){
+            window.modal.modalIsOpen = true
+        },
+        beforeClose: function() {
+            window.modal.modalIsOpen = false
+            // here's goes some logic
+            // e.g. save content before closing the modal
+            return true; // close the modal
+            return false; // nothing happens
+        }
+    });
+
+    modal.addFooterBtn('Tutup', 'tingle-btn tingle-btn--primary tingle-btn--pull-right', function(){
+        modal.close();
+    })
+
+    socketDepot.emit('join', depotId)
+    //modal.open();
+    window.modal = modal;
+    
+})
+</script>
+</html>

@@ -15,6 +15,10 @@ app.get('/depot', function(req, res) {
 	res.sendFile('/depot.html',{ root: __dirname })
 })
 
+app.get('/', function(req, res){
+	res.send('url are /consumen or /depot');
+}
+
 ioConsumen.on('connection', function(socket){
 	
 	socket.on('join', consumenId => {
